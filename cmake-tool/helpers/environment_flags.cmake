@@ -11,7 +11,7 @@ macro(add_default_compilation_options)
     # Setup base flags as defined by the kernel before including the rest
     include(${KERNEL_FLAGS_PATH})
 
-    if((${CMAKE_BUILD_TYPE} STREQUAL "Release") OR (${CMAKE_BUILD_TYPE} STREQUAL "MinSizeRel"))
+    if(("${CMAKE_BUILD_TYPE}" STREQUAL "Release") OR ("${CMAKE_BUILD_TYPE}" STREQUAL "MinSizeRel"))
         option(UserLinkerGCSections "Perform dead code and data removal
             Build user level with -ffunction-sections and -fdata-sections and
             link with --gc-sections. The first two options place each function
@@ -50,6 +50,20 @@ macro(add_default_compilation_options)
 
     if(KernelSel4ArchAarch32)
         add_compile_options(-mtp=soft)
+    endif()
+
+    # Don't allow unaligned data store/load instructions as this will cause an alignment
+    # fault on any seL4 memory regions that are uncached as the mapping attributes the kernel
+    # uses causes alignment checks to be enabled.
+    if(KernelSel4ArchAarch64)
+        add_compile_options(-mstrict-align)
+        EXECUTE_PROCESS(COMMAND gcc -dumpversion CMAKE_C_COMPILER_VERSION)
+        set(GCC_10 "10.0.0")
+        if(${CMAKE_C_COMPILER_VERSION} VERSION_GREATER_EQUAL ${GCC_10})
+            add_compile_options(-mno-outline-atomics)
+        endif()
+    elseif(KernelSel4ArchAarch32)
+        add_compile_options(-mno-unaligned-access)
     endif()
 endmacro()
 
